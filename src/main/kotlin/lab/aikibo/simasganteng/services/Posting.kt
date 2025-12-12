@@ -1,5 +1,6 @@
 package lab.aikibo.simasganteng.services
 
+import lab.aikibo.simasganteng.tools.Base64Converter
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
@@ -17,9 +18,10 @@ class Posting {
 
     val restTemplate = RestTemplate()
     val log = LoggerFactory.getLogger(Posting::class.java)
-    val url = "https://simasganteng-app4.brebeskab.go.id/sitampan/kin-harian/create?tgl=WW5KbEl6SXdNalV0T0MweE5pTmlaWE4w"
-    val cookie = "bkpsdmd-brebeskab-app=p1m8dfenokj052qfjj4si1gfa4"
-    val csrfApp = "L_W_ukwiQz2av-NY-qay8Ap3jpHdl7iBLUKg7ioCAxJ3w_D5C1cAdc7ckiqfkYqgYAbD1qXa-9lVEuqfU1VoKg=="
+    val url = "https://simasganteng-app4.brebeskab.go.id/sitampan/kin-harian/create?tgl=WW5KbEl6SXdNalV0TVRBdE1UWWpZbVZ6ZEE9PQ=="
+    val urlRealisasi = "https://simasganteng-app4.brebeskab.go.id/sitampan/kin-harian/update-rel?id="
+    val cookie = "bkpsdmd-brebeskab-app=r105q4c05gvk0a3ffkk60b7quu"
+    val csrfApp = "II17m09uExE5uN50b4VdwFjWcu5V4egt5rOuUNGYV4JI6jKseCs-ckHw5i4j52uTFpoU3QC2vX6H1ZxlmNw9rw=="
 
     fun pushOne(cookie: String, csrfApp: String, tgl: LocalDate, uraian: Uraian): ResponseEntity<String> {
         val isoFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd")
@@ -48,7 +50,7 @@ class Posting {
 
         val reqEntity = HttpEntity(formData, headers)
         val response = restTemplate.postForEntity(url, reqEntity, String::class.java)
-        log.info(" >> ${uraian.uraian} >> ${response.statusCode}")
+        log.info("${tgl.format(isoFormat)} >> ${uraian.uraian} >> ${response.statusCode}")
         return response
     }
 
@@ -66,13 +68,14 @@ class Posting {
             formData.add("_csrf-app", csrfApp)
             formData.add("tgl-kinharian-tgl-disp", tglPanjang)
             formData.add("KinHarian[tgl]", tgl)
+            formData.add("KinHarian[uraian_keg_h]", it.uraian)
             formData.add("kinharian-target_kuan_h-disp", "1")
             formData.add("KinHarian[target_kuan_h]", "1")
             formData.add("KinHarian[target_output_h]", "Kegiatan")
             formData.add("twaktu-disp", it.durasi.toString())
             formData.add("KinHarian[target_waktu_h]", "${it.durasi}")
             formData.add("KinHarian[tgl_target]", tglPosting)
-            formData.add("KinHarian[uraian_keg_h]", it.uraian)
+
 
             val reqEntity = HttpEntity(formData, headers)
             val response = restTemplate.postForEntity(url, reqEntity, String::class.java)
@@ -94,6 +97,40 @@ class Posting {
                 Thread.sleep(1_000)
             }
         }
+    }
+
+    fun pushRealisasi(cookie: String, csrfApp: String,
+                      realisasiWaktu: String, // format: YYYY-MM-DD
+                      id: String, waktuPengerjaan: String,
+                      realisasiWaktuDetail: String // format: YYYY-MM-DD HH:MM:SS
+    ): ResponseEntity<String> {
+        log.info("siapkan header")
+        val headers = HttpHeaders().apply {
+            add("Cookie", cookie)
+        }
+        log.info("header: $headers")
+
+        val formData = LinkedMultiValueMap<String, String>()
+        formData.add("_csrf-app", csrfApp)
+        formData.add("KinHarian[tgl]", realisasiWaktu)
+        formData.add("kinharian-real_kuan_h-disp", "1")
+        formData.add("KinHarian[real_kuan_h]", "1")
+        formData.add("trealwaktu-disp", waktuPengerjaan)
+        formData.add("KinHarian[real_waktu_h]", waktuPengerjaan)
+        formData.add("KinHarian[real_output_h]", "Kegiatan")
+        formData.add("KinHarian[tgl_real]", realisasiWaktuDetail)
+
+        val reqEntity = HttpEntity(formData, headers)
+        val idBase64 = Base64Converter.encodeIdKegiatanSimasganteng(id)
+        log.info("url : $urlRealisasi$idBase64")
+        val response = restTemplate.postForEntity(urlRealisasi + idBase64,
+            reqEntity, String::class.java)
+        log.info(" >> ${idBase64}")
+        return response
+    }
+
+    fun batchRealisasi(cookie: String, csrfApp: String, realisasiWaktu: String, daftarId: List<String>) {
+
     }
 
 }
